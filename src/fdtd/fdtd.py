@@ -362,11 +362,39 @@ def _calc_inner_magnetic_field_y(
 
 if __name__ == "__main__":
 
-    dt = get_dy_by_courant_condition(0.01)
-    run_tm_2d(
-        mx = 100, my = 100, dx = 0.01, dy = 0.01,
-        nstep = 100, dt = dt*0.1
+    freq = 5e9 #5GHz
+    lambda_0 = c / freq #波長[m]
+
+    N_lambda_0 = 50 #波長の何分の１をメッシュにとるか？
+
+    dx = lambda_0 / N_lambda_0
+    dy = dx
+
+    #dt = get_dy_by_courant_condition(dx)
+    N_period = 100 # 周期の何分の１を１ステップとするか？
+    dt = 1.0/freq/N_period
+
+    ele_z, mag_x, mag_y = run_tm_2d(
+        mx = 200, my = 200, dx = dx, dy = dy,
+        nstep = 500, dt = dt, freq = freq
     )
+    for step, (ele_z_2d, mag_x_2d, mag_y_2d) in enumerate(zip(ele_z, mag_x, mag_y)):
+        if (step > 100 )& (step % 5 == 0):
+            plt.imshow(ele_z_2d, vmin = -1, vmax = 1)
+            plt.colorbar()
+            plt.savefig("./src/fdtd/data/ez_" + str(step).zfill(4) + ".png")
+            plt.close()
+
+            # plt.imshow(mag_x_2d)
+            # plt.colorbar()
+            # plt.savefig("./src/fdtd/data/hx_" + str(step).zfill(4) + ".png")
+            # plt.close()
+
+            # plt.imshow(mag_y_2d)
+            # plt.colorbar()
+            # plt.savefig("./src/fdtd/data/hy_" + str(step).zfill(4) + ".png")
+            # plt.close()
+
     pass
 
 
