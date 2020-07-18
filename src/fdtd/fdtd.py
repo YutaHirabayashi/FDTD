@@ -243,13 +243,88 @@ def _plane_wave_source(
         #mag_y[iy, ix] = ele_z[iy, ix]/z_0
     return ele_z
 
-def _update_magnetic_field():
+def _update_magnetic_field(
+    ele_z:np.ndarray, mag_x:np.ndarray, mag_y:np.ndarray,
+    dx:float, dy:float, dt:float, region_info:np.ndarray
+    ) -> (np.ndarray, np.ndarray):
+    """1ループ分の計算をして電場を更新
+
+    Args:
+        ele_z (np.ndarray): Z方向の電場（更新前）
+        mag_x (np.ndarray): X方向の磁場
+        mag_y (np.ndarray): Y方向の磁場
+        dx (float) : x方向の1メッシュのサイズ
+        dy (float) : y方向の1メッシュのサイズ
+        dt (float) : 1ステップの長さ（時間）
+        region_info (np.ndarray) : モデル領域の情報
+
+    Returns:
+        (np.ndarray, np.ndarray): X方向の磁場、Y方向の磁場
+    """ 
+
+    # X方向の磁場の更新
+    mag_x = _calc_inner_magnetic_field_x(ele_z, mag_x, dy, region_info)
+
+    # Y方向の磁場の更新
+    mag_y = _calc_inner_magnetic_field_y(ele_z, mag_y, dx, region_info)
     
-    # 磁場の更新
+    return mag_x, mag_y
 
-    # 補正境界条件
+@numba.jit(nopython=True)
+def _calc_inner_magnetic_field_x(
+    ele_z:np.ndarray, mag_x:np.ndarray, dy:float, region_info:np.ndarray)->np.ndarray:
+    """内部の磁場の更新（X方向）
 
-    return
+    Args:
+        ele_z (np.ndarray): Z方向の電場
+        mag_x (np.ndarray): X方向の磁場（更新前）
+        dy (float): y方向の１メッシュのサイズ
+        region_info (np.nadarray): モデル領域の情報
+
+    Returns:
+        np.ndarray: X方向の磁場（更新後）
+    """  
+
+    chxly = dt/(mu_0*dy)
+    new_mag_x = np.copy(mag_x)
+    
+    chxly = dt/(mu_0*dy)
+    for iy in range(0, new_mag_x.shape[0] - 1):
+        for ix in range(1, new_mag_x.shape[1] - 1):
+            if (region_info[iy, ix] == VACUUM):
+                new_mag_x[iy, ix] = mag_x[iy, ix] - chxly*(ele_z[iy + 1, ix] - ele_z[iy, ix])
+            elif (region_info[iy, ix] == METAL):
+                new_mag_x[iy, ix] = 0.0
+
+    return new_mag_x
+
+@numba.jit(nopython=True)
+def _calc_inner_magnetic_field_y(
+    ele_z:np.ndarray, mag_y:np.ndarray, dx:float, region_info:np.ndarray)->np.ndarray:
+    """内部の磁場の更新（Y方向）
+
+    Args:
+        ele_z (np.ndarray): Z方向の電場
+        mag_y (np.ndarray): Y方向の磁場（更新前）
+        dx (float): x方向の１メッシュのサイズ
+        region_info (np.ndarray): モデル領域の情報
+
+    Returns:
+        np.ndarray: Y方向の磁場（更新後）
+    """    
+
+    chylx = dt/(mu_0*dx)
+    new_mag_y = np.copy(mag_y)
+    
+    for iy in range(1, new_mag_y.shape[0] - 1):
+        for ix in range(0, new_mag_y.shape[1] - 1):
+            if (region_info[iy, ix] == VACUUM):
+                new_mag_y[iy, ix] = mag_y[iy, ix] + chylx*(ele_z[iy, ix + 1] - ele_z[iy, ix])
+            elif (region_info[iy, ix] == METAL):
+                new_mag_y[iy, ix] = 0.0
+
+    return new_mag_y
+
 
 if __name__ == "__main__":
 
