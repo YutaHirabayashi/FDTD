@@ -1,14 +1,12 @@
 import numpy as np
 import numba
-
+import matplotlib.pyplot as plt
 
 ###物理定数####################################
 c =2.998e8 #光速[m/s]
 epsilon_0 = 8.854e-12 #真空の誘電率[F/m]
 mu_0 = 4.0e-7*np.pi #真空の透磁率
 sigma = 0.0 #真空の電気電動率
-
-freq_plane = 1.0e9 #波源の周波数
 z_0 = 376.7343091821 #インピーダンス
 ##############################################
 
@@ -35,7 +33,7 @@ def get_dy_by_courant_condition(dx:float) -> float:
 
 def run_tm_2d(mx:int, my:int, dx:float, dy:float, nstep:int, dt:float, freq:float
     ) -> (np.ndarray, np.ndarray, np.ndarray):
-
+    
     """[summary]
     Args:
         mx (int) :X方向のメッシュ数
@@ -75,7 +73,7 @@ def run_tm_2d(mx:int, my:int, dx:float, dy:float, nstep:int, dt:float, freq:floa
         ele_z = _update_electronic_field(
             ele_z, mag_x, mag_y, region_info, dx, dy, dt, fstep, freq
         )
-
+        
         fstep += 0.5
 
         #磁場
@@ -136,7 +134,7 @@ def _modeling(mx:int, my:int) -> np.ndarray:
 
 def _update_electronic_field(
     ele_z:np.ndarray, mag_x:np.ndarray, mag_y:np.ndarray, 
-    region_info:np.ndarray, dx:float, dy:float, dt:float, fstep:float
+    region_info:np.ndarray, dx:float, dy:float, dt:float, fstep:float, freq:float
 ) -> np.ndarray:
     """1ループ分の計算をして電場を更新
 
@@ -149,6 +147,7 @@ def _update_electronic_field(
         dy (float) : y方向の1メッシュのサイズ
         dt (float) : 1ステップの長さ（時間）
         fstep (float) : 現在のステップ数(1/2も含む)
+        freq (float) : 波源の周波数
 
     Returns:
         (np.ndarray, np.ndarray, np.ndarray): Z方向電場
@@ -156,11 +155,12 @@ def _update_electronic_field(
 
 
     # 電場の更新
-    _calc_inner_electoronic_field(
-        ele_z, mag_x, mag_y, dx, dy, dt, region_info
+    ele_z = _calc_inner_electoronic_field(
+        ele_z, mag_x, 
+        mag_y, dx, dy, dt, region_info, freq
     )
 
-    # 補正境界条件（セルのずれ）
+    return ele_z
 
 @numba.jit(nopython=True)
 def _calc_abc(new_ele_z:np.ndarray, ele_z:np.ndarray, dt:float, dx:float, dy:float, freq:float)->np.ndarray:
@@ -206,9 +206,11 @@ def _calc_abc(new_ele_z:np.ndarray, ele_z:np.ndarray, dt:float, dx:float, dy:flo
         new_ele_z[iy, ix] = ele_z[iy - 1, ix] + mury*(new_ele_z[iy - 1, ix] - ele_z[iy, ix])
 
     return new_ele_z
+    
+@numba.jit(nopython=True)
 def _calc_inner_electoronic_field(
     ele_z:np.ndarray, mag_x:np.ndarray, mag_y:np.ndarray,
-    dx:float, dy:float, dt:float, region_info:np.ndarray
+    dx:float, dy:float, dt:float, region_info:np.ndarray, freq:float
     ) -> np.ndarray:
     """内部の電場を更新する（Maxwell）
 
@@ -220,6 +222,7 @@ def _calc_inner_electoronic_field(
         dy (float) : y方向の1メッシュのサイズ
         dt (float) : 1ステップの長さ（時間）
         region_info (np.ndarray) : モデル領域の情報
+        freq (float) : 波源の周波数
 
     Return:
         (np.ndarray) : Z方向の電場（更新後）
@@ -346,14 +349,14 @@ def _calc_inner_magnetic_field_y(
 
     chylx = dt/(mu_0*dx)
     new_mag_y = np.copy(mag_y)
-    
+
     for iy in range(1, new_mag_y.shape[0] - 1):
         for ix in range(0, new_mag_y.shape[1] - 1):
             if (region_info[iy, ix] == VACUUM):
                 new_mag_y[iy, ix] = mag_y[iy, ix] + chylx*(ele_z[iy, ix + 1] - ele_z[iy, ix])
             elif (region_info[iy, ix] == METAL):
                 new_mag_y[iy, ix] = 0.0
-
+            
     return new_mag_y
 
 
