@@ -33,9 +33,27 @@ def get_dy_by_courant_condition(dx:float) -> float:
     return dt
 
 
-def run_tm_2d(
-    mx:int, my:int, dx:float, dy:float, nstep:int, dt:float,
-    ) -> (np.ndarray, np.ndarray):
+def run_tm_2d(mx:int, my:int, dx:float, dy:float, nstep:int, dt:float, freq:float
+    ) -> (np.ndarray, np.ndarray, np.ndarray):
+
+    """[summary]
+    Args:
+        mx (int) :X方向のメッシュ数
+        my (int) :Y方向のメッシュ数
+        dx (float) : X方向のメッシュの長さ[m]
+        dy (float) : Y方向のメッシュの長さ[m]
+        nstep (int) : 総ステップ数
+        dt (float) : 1ステップあたりの時間[s]
+        freq (float) : 波源の周波数[Hz]
+
+    Returns:
+        (np.ndarray, np.ndarray, np.ndarray): 時間ステップごとのZ方向電場・X方向磁場・Y方向磁場
+    """
+    
+    # return用の配列
+    list_ele_z = []
+    list_mag_x = []
+    list_mag_y = []
 
     # 初期化
     ele_z, mag_x, mag_y = _init_field(mx, my)
@@ -45,25 +63,35 @@ def run_tm_2d(
 
     # mainループ
     fstep = 0.0
-    while fstep < nstep:
+    while fstep < float(nstep):
+
+        print(f"********** step : {fstep}   start ********** ")
         # 励振（平面波）
-        _plane_wave_source(
-            ele_z, mag_y, dt, fstep
+        ele_z = _plane_wave_source(
+            ele_z, dt, fstep, freq
         )
 
         #電場
         ele_z = _update_electronic_field(
-            ele_z, mag_x, mag_y, region_info, dx, dy, dt, fstep
+            ele_z, mag_x, mag_y, region_info, dx, dy, dt, fstep, freq
         )
 
         fstep += 0.5
 
         #磁場
 
+        mag_x, mag_y = _update_magnetic_field(
+            ele_z, mag_x, mag_y, dx, dy, dt, region_info
+        )
+
+
         fstep += 0.5
 
-    # output
-    return
+        list_ele_z.append(ele_z)
+        list_mag_x.append(mag_x)
+        list_mag_y.append(mag_y)
+
+    return np.array(list_ele_z), np.array(list_mag_x), np.array(list_mag_y)
 
 def _init_field(mx:int, my:int) -> (np.ndarray, np.ndarray, np.ndarray):
     """電場と磁場の初期化（TM法なので、電場はZ方向のみ、磁場はx,y方向のみ）
