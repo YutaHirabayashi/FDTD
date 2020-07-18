@@ -217,30 +217,31 @@ def _calc_inner_electoronic_field(
 
     return new_ele_z
 
+@numba.jit(nopython=True)
 def _plane_wave_source(
-    ele_z:np.ndarray, mag_y:np.ndarray, dt:float, fstep:float
-    ) -> (np.ndarray, np.ndarray):
+    ele_z:np.ndarray, dt:float, fstep:float, freq:float
+    ) -> np.ndarray:
     '''平面波を与える
     
     Args:
         ele_z (np.ndarray) : Z方向の電場
-        mag_y (np.ndarray) : Y方向の磁場
         dt (float) : 時間ステップ幅
         fstep (float) : 現在のステップ数
+        freq (float) : 波源の周波数
 
     Return:
-        (np.ndarray, np.ndarray) : Z方向の電場、Y方向の磁場
+        (np.ndarray, np.ndarray) : Z方向の電場
 
     '''    
 
     
     t = dt*fstep
-    #cos
+    
     ix = 1
-    for iy in range(ele_z.shape[0]):
-        ele_z[iy, ix] += np.cos(2*np.pi*freq_plane*t)
-        mag_y[iy, ix] -= ele_z[iy, ix]/z_0
-    return ele_z, mag_y
+    for iy in range(1, ele_z.shape[0]-1):
+        ele_z[iy, ix] = np.cos(2*np.pi*freq*t)
+        #mag_y[iy, ix] = ele_z[iy, ix]/z_0
+    return ele_z
 
 def _update_magnetic_field():
     
