@@ -134,11 +134,50 @@ def _update_electronic_field(
 
     # 補正境界条件（セルのずれ）
 
-    # 吸収境界条件
+@numba.jit(nopython=True)
+def _calc_abc(new_ele_z:np.ndarray, ele_z:np.ndarray, dt:float, dx:float, dy:float, freq:float)->np.ndarray:
+    """吸収境界条件の計算（１次のMur条件）
 
-    return
+    Args:
+        new_ele_z (np.ndarray): Z方向の電場(内部計算の更新後)
+        ele_z (np.ndarray): Z方向の電場(内部計算の更新前）
+        dt (float): 時間ステップ
+        dx (float): １メッシュの大きさ（X方向）
+        dy (float): １メッシュの大きさ（Y方向）
+        freq (float) : 波源の周波数
 
-#@numba.jit
+    Returns:
+        np.ndarray: 境界条件が考慮された電場（Z方向）
+    """  
+
+    ####x####
+    murx = (c*dt - dx) / (c*dt + dx)
+
+    # 左端
+    ix = 0
+    for iy in range(0, ele_z.shape[0]):
+        new_ele_z[iy, ix] = ele_z[iy, ix + 1] + murx*(new_ele_z[iy, ix + 1] - ele_z[iy, ix])
+    
+    # 右端
+    ix = ele_z.shape[1] - 1
+    for iy in range(0, ele_z.shape[0]):
+        new_ele_z[iy, ix] = ele_z[iy, ix - 1] + murx*(new_ele_z[iy, ix - 1] - ele_z[iy, ix])
+
+
+    #####y#####
+    mury = (c*dt - dy)/ (c*dt + dy)
+
+    #　上端
+    iy = 0
+    for ix in range(0, ele_z.shape[1]):
+        new_ele_z[iy, ix] = ele_z[iy + 1, ix] + mury*(new_ele_z[iy + 1, ix] - ele_z[iy, ix])
+    
+    # 下端
+    iy = ele_z.shape[0] - 1
+    for ix in range(0, ele_z.shape[1]):
+        new_ele_z[iy, ix] = ele_z[iy - 1, ix] + mury*(new_ele_z[iy - 1, ix] - ele_z[iy, ix])
+
+    return new_ele_z
 def _calc_inner_electoronic_field(
     ele_z:np.ndarray, mag_x:np.ndarray, mag_y:np.ndarray,
     dx:float, dy:float, dt:float, region_info:np.ndarray
