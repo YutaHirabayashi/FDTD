@@ -208,11 +208,11 @@ def _calc_inner_electoronic_field(
         # 0 ~ mx + 1のうち、1 ~ mxのメッシュ（内部）を更新する
         for ix in range(1, new_ele_z.shape[1] - 1):
             #真空領域
-            if np.isclose(region_info[iy, ix], VACUUM):
+            if (region_info[iy, ix] == VACUUM):
                 new_ele_z[iy, ix] = cez*ele_z[iy, ix]\
                                     + cezlx*(mag_y[iy, ix] - mag_y[iy, ix - 1])\
                                     - cezly*(mag_x[iy, ix] - mag_x[iy - 1, ix])
-            elif np.isclose(region_info[iy, ix], METAL):
+            elif (region_info[iy, ix] == METAL):
                 new_ele_z[iy, ix] = 0.0
 
     return new_ele_z
