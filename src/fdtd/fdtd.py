@@ -198,8 +198,8 @@ def _calc_inner_electoronic_field(
     """
 
     cez = (1-sigma*dt/(2*epsilon_0))/(1+sigma*dt/(2*epsilon_0))
-    cezlx = dt/(mu_0*dx)
-    cezly = dt/(mu_0*dy)
+    cezlx = (dt/epsilon_0)/(1+sigma*dt/(2*epsilon_0))/dx
+    cezly = (dt/epsilon_0)/(1+sigma*dt/(2*epsilon_0))/dy
 
     new_ele_z = np.copy(ele_z)
 
