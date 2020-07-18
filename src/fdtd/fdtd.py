@@ -215,6 +215,9 @@ def _calc_inner_electoronic_field(
             elif (region_info[iy, ix] == METAL):
                 new_ele_z[iy, ix] = 0.0
 
+    #境界吸収条件
+    new_ele_z = _calc_abc(new_ele_z, ele_z, dt, dx, dy, freq)
+
     return new_ele_z
 
 @numba.jit(nopython=True)
